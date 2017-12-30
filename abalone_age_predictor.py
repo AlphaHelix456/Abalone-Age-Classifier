@@ -8,6 +8,8 @@ from sklearn.metrics import mean_squared_error
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.model_selection import cross_val_score
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import GridSearchCV
+from sklearn.svm import SVR
 
 CSV_PATH = "abalone.data.txt"
 
@@ -36,61 +38,45 @@ pipeline = Pipeline([
 
 X_train_preprocessed = pipeline.fit_transform(X_train)
 
-# Training and evaluation linear regression model on training set
+# Fine-tuning
+
+def fine_tune(clf, hyperparameters, scoring="neg_mean_squared_error", cv=10):
+    grid_search = GridSearchCV(clf, hyperparameters, cv=cv, scoring=scoring)
+    grid_search.fit(X_train_preprocessed, y_train)
+    print(grid_search.best_params_)
+    print(grid_search.score(X_train_preprocessed, y_train))
+          
 lin_reg = LinearRegression()
-lin_reg.fit(X_train_preprocessed, y_train)
-print("Linear Regression Evaluation")
-print("Predictions:", lin_reg.predict(X_train[:30]))
-print("Labels:", y_train[:30])
-print("Accuracy:", lin_reg.score(X_train_preprocessed, y_train))
-
-predictions = lin_reg.predict(X_train_preprocessed)
-lin_mse = mean_squared_error(y_train, predictions)
-lin_rmse = np.sqrt(lin_mse)
-print("RMSE:", lin_rmse)
-
-# Typical prediction error on training set is 2.187 years
-# Model is underfitting the data
-
 tree_reg = DecisionTreeRegressor()
-tree_reg.fit(X_train_preprocessed, y_train)
-predictions = tree_reg.predict(X_train_preprocessed)
-tree_mse = mean_squared_error(y_train, predictions)
-tree_rmse = np.sqrt(tree_mse)
-print("Decision Tree Evaluation")
-print("Accuracy:", tree_reg.score(X_train_preprocessed, y_train))
-print("RMSE:", tree_rmse)
-
-# Model is overfitting the data so much so that the accuracy is 100%
-
-# 10-fold cross-validation to better evaluate Decision Tree model
-tree_scores = cross_val_score(tree_reg, X_train_preprocessed, y_train,
-                         scoring="neg_mean_squared_error", cv=10)
-tree_rmse_scores = np.sqrt(-tree_scores)
-
-def display_scores(scores):
-    print("Scores from CV:", scores)
-    print("Mean:", scores.mean())
-    print("Standard deviation:", scores.std())
-
-display_scores(tree_rmse_scores)
-# RMSE is higher than that of linear regression meaning the decision tree model
-# performs worse. This confirms that the decision tree model is overfitting the data
-
 rand_forest_reg = RandomForestRegressor()
-rand_forest_reg.fit(X_train_preprocessed, y_train)
-predictions = rand_forest_reg.predict(X_train_preprocessed)
-rand_forest_mse = mean_squared_error(y_train, predictions)
-rand_forest_rmse = np.sqrt(rand_forest_mse)
-print("Random Forest Evaluation")
-print("RMSE:", rand_forest_rmse)
+svr = SVR()
 
-rand_forest_scores = cross_val_score(rand_forest_reg, X_train_preprocessed,
-                                      y_train, scoring="neg_mean_squared_error",
-                                      cv=10)
-rand_forest_rmse_scores = np.sqrt(-rand_forest_scores)
-display_scores(rand_forest_rmse_scores)
-# RMSE scores are improved but the model is still overfitting the training set
+
+lin_hyperparameters = {"fit_intercept":[True, False],
+                       "normalize":[True, False],
+                       "copy_X":[True, False]}
+
+tree_hyperparameters = {"max_depth":[1, 5, 10, 30, None],
+                        "max_features":[2, 4, 6, None, "sqrt"],
+                        "presort":[True, False]}
+
+rand_forest_hyperparameters = {"n_estimators":[10, 15, 30],
+                        "max_features":[2, 3, 4, 5],
+                        "max_depth":[5, 10, 15, 20, 30, None],
+                        "bootstrap":[True, False],
+                        "warm_start":[True, False]}
+
+svr_hyperparameters = {"kernel":["rbf", "poly", "sigmoid", "linear"],
+                       "shrinking":[True, False]}
+
+fine_tune(lin_reg, lin_hyperparameters, scoring="r2")
+fine_tune(tree_reg, tree_hyperparameters, scoring="r2")
+fine_tune(rand_forest_reg, rand_forest_hyperparameters, scoring="r2")
+fine_tune(svr, svr_hyperparameters, scoring="r2")
+
+# Linear regression, decision tree regression, and svr all perform about the
+# same with the grid search
+# Random forest regressor is the best model
 
 
 
