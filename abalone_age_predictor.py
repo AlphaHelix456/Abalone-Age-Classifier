@@ -7,6 +7,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.model_selection import cross_val_score
+from sklearn.ensemble import RandomForestRegressor
 
 CSV_PATH = "abalone.data.txt"
 
@@ -75,3 +76,22 @@ def display_scores(scores):
 display_scores(tree_rmse_scores)
 # RMSE is higher than that of linear regression meaning the decision tree model
 # performs worse. This confirms that the decision tree model is overfitting the data
+
+rand_forest_reg = RandomForestRegressor()
+rand_forest_reg.fit(X_train_preprocessed, y_train)
+predictions = rand_forest_reg.predict(X_train_preprocessed)
+rand_forest_mse = mean_squared_error(y_train, predictions)
+rand_forest_rmse = np.sqrt(rand_forest_mse)
+print("Random Forest Evaluation")
+print("RMSE:", rand_forest_rmse)
+
+rand_forest_scores = cross_val_score(rand_forest_reg, X_train_preprocessed,
+                                      y_train, scoring="neg_mean_squared_error",
+                                      cv=10)
+rand_forest_rmse_scores = np.sqrt(-rand_forest_scores)
+display_scores(rand_forest_rmse_scores)
+# RMSE scores are improved but the model is still overfitting the training set
+
+
+
+
